@@ -77,6 +77,18 @@ execute_with_python() {
     exec $python -c "import os; os.execl('$login_shell', '-' '$shell_name')"
 }
 
+patch_sudo() {
+shell_name=$(basename $login_shell)
+if ! sh -c "cat $HOME/.${shell_name}rc | grep -qE '^sudo\()\s*{'"; then
+    cat <<EOF >> $HOME/.${shell_name}rc 
+
+sudo() {
+    TERMINFO="\$HOME/.terminfo" /bin/sudo --preserve-env=TERMINFO \$@
+}
+EOF
+fi
+}
+
 die() { echo "$*" 1>&2 ; exit 1; }
 
 using_getent
@@ -85,6 +97,8 @@ if ! login_shell_is_ok; then using_python; fi
 if ! login_shell_is_ok; then using_passwd; fi
 if ! login_shell_is_ok; then die "Could not detect login shell"; fi
 
+# patch sudo to pass terminfo
+patch_sudo
 
 # If a command was passed to SSH execute it here
 EXEC_CMD
